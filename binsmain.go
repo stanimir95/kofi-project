@@ -32,14 +32,7 @@ func run() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
-		//  | syscall.CLONE_NEWUSER,
-		// Credential: &syscall.Credential{Uid: 0, Gid: 0},
-		// UidMappings: []syscall.SysProcIDMap{
-		// {ContainerID: 0, HostID: os.Geteuid(), Size: 1},
-		// },
-		// GidMappings: []syscall.SysProcIDMap{
-		// {ContainerID: 0, HostID: os.Getegid(), Size: 1},
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS, //currently working on network separation
 	}
 	must(cmd.Run())
 }
