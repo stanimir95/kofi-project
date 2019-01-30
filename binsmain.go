@@ -47,10 +47,11 @@ func child() {
 	must(syscall.Chroot("ubuntufs"))
 	must(os.Chdir("/"))
 	must(syscall.Mount("proc", "proc", "proc", 0, ""))
-	must(syscall.Sethostname([]byte("container")))
+	must(syscall.Sethostname([]byte("container"))) //Name of container 
 	must(cmd.Run())
 
-	must(syscall.Unmount("proc", 0)) // MUST USE OTHERWISE BAD SHIT HAPPENS TO HOST OS
+	must(syscall.Unmount("proc", 0)) // Unmounting proc is a must, otherwise after exiting from the container, the host
+	// os will still use the newly created proceses and will be unusable
 }
 
 func must(err error) {
