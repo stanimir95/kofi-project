@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"syscall"
+	"time"
 )
 
 // kofi run command arguments
@@ -18,7 +21,7 @@ func main() {
 		run()
 	case "child":
 		child()
-// 
+		//
 	case "init":
 		dlandunpack()
 	default:
@@ -44,10 +47,18 @@ func child() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Random container name
+	a := 1000
+	b := 2000
+	rand.Seed(time.Now().UnixNano())
+	n := a + rand.Intn(b-a+1)
+	ns := []byte(strconv.Itoa(n))
+	//-------------------------------
+	//------------------------------
 	must(syscall.Chroot("ubuntufs"))
 	must(os.Chdir("/"))
 	must(syscall.Mount("proc", "proc", "proc", 0, ""))
-	must(syscall.Sethostname([]byte("container"))) //Name of container 
+	must(syscall.Sethostname(ns)) //Name of container
 	must(cmd.Run())
 
 	must(syscall.Unmount("proc", 0)) // Unmounting proc is a must, otherwise after exiting from the container, the host
@@ -60,18 +71,18 @@ func must(err error) {
 	}
 }
 
-//from here (line 68 to the end) is the "init" command)
+//from here is the "init" command)
 // dlunpack creates a folder and downloads an archive in the directory that "kofi init" has been run
 func dlandunpack() {
 	os.Mkdir(filepath.Join("ubuntufs"), 0777)
 	os.Chdir("./ubuntufs")
 	fileUrl := "https://partner-images.canonical.com/core/trusty/current/ubuntu-trusty-core-cloudimg-amd64-root.tar.gz"
-	
+
 	err := DownloadFile("ubuntu.tar.gz", fileUrl)
 	if err != nil {
 		panic(err)
 	}
-// Extracts the archive in the newly created folder 
+	// Extracts the archive in the newly created folder
 	cmd := exec.Command("tar", "-xvzf", "ubuntu.tar.gz")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -89,7 +100,7 @@ func DownloadFile(filepath string, url string) error {
 	}
 	defer out.Close()
 
-	// Download 
+	// Download
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
