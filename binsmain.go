@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -29,7 +32,46 @@ func main() {
 	}
 }
 
+type weatherData struct {
+	ContainerName string `json: locationName`
+}
+
+type loc struct {
+	Lat string `json: lat`
+	Lon string `json: lon`
+}
+
+func weatherHandler(w http.ResponseWriter, r *http.Request) {
+	location := loc{}
+
+	log.Println(r.Method)
+	jsn, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Fatal("Error reading the body", err)
+	}
+	err = json.Unmarshal(jsn, &location)
+	if err != nil {
+		log.Fatal("Decoding error: ", err)
+	}
+	log.Printf("Received: %v\n", location)
+	weather := weatherData{
+		ContainerName: "Zzyzx",
+	}
+	weatherJson, err := json.Marshal(weather)
+	if err != nil {
+		fmt.Fprintf(w, "Error: %s", err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(weatherJson)
+
+}
+func server() {
+	http.HandleFunc("/", weatherHandler)
+	http.ListenAndServe(":8080", nil)
+}
+
 func run() {
+	go server()
 	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -62,7 +104,7 @@ func child() {
 	must(cmd.Run())
 
 	must(syscall.Unmount("proc", 0)) // Unmounting proc is a must, otherwise after exiting from the container, the host
-	// os will still use the newly created proceses and will be unusable
+	// os will still use the newly created namespaces and will be unusable
 }
 
 func must(err error) {
