@@ -6,56 +6,51 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"syscall"
-	"time"
 )
 
 // kofi run command arguments
 // go run binsmain.go run command arguments
 func main() {
+
 	switch os.Args[1] {
 	case "run":
 		run()
 	case "child":
 		child()
-		//
 	case "init":
 		dlandunpack()
-	default:
-		panic("what?")
+
 	}
+
 }
 
 type weatherData struct {
-	ContainerName string `json: locationName`
+	ContainerName string `json: msgationName`
 }
 
-type loc struct {
-	Lat string `json: lat`
-	Lon string `json: lon`
+type msg struct {
+	msgone string `json: msgone`
+	msgtwo string `json: msgtwo`
 }
 
-func weatherHandler(w http.ResponseWriter, r *http.Request) {
-	location := loc{}
-
+func containerHandler(w http.ResponseWriter, r *http.Request) {
+	msgation := msg{}
 	log.Println(r.Method)
 	jsn, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Fatal("Error reading the body", err)
+		log.Fatal("Error reading", err)
 	}
-	err = json.Unmarshal(jsn, &location)
-	if err != nil {
-		log.Fatal("Decoding error: ", err)
-	}
-	log.Printf("Received: %v\n", location)
+	err = json.Unmarshal(jsn, &msgation)
+
+	log.Printf("Received: %v\n", msgation)
+
 	weather := weatherData{
-		ContainerName: "Zzyzx",
+		ContainerName: "kofi1",
 	}
 	weatherJson, err := json.Marshal(weather)
 	if err != nil {
@@ -66,7 +61,7 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func server() {
-	http.HandleFunc("/", weatherHandler)
+	http.HandleFunc("/", containerHandler)
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -89,18 +84,10 @@ func child() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// Random container name
-	a := 1000
-	b := 2000
-	rand.Seed(time.Now().UnixNano())
-	n := a + rand.Intn(b-a+1)
-	ns := []byte(strconv.Itoa(n))
-	//-------------------------------
-	//------------------------------
 	must(syscall.Chroot("ubuntufs"))
 	must(os.Chdir("/"))
 	must(syscall.Mount("proc", "proc", "proc", 0, ""))
-	must(syscall.Sethostname(ns)) //Name of container
+	syscall.Sethostname([]byte("container"))
 	must(cmd.Run())
 
 	must(syscall.Unmount("proc", 0)) // Unmounting proc is a must, otherwise after exiting from the container, the host
@@ -115,21 +102,28 @@ func must(err error) {
 
 //from here is the "init" command)
 // dlunpack creates a folder and downloads an archive in the directory that "kofi init" has been run
+
 func dlandunpack() {
+
 	os.Mkdir(filepath.Join("ubuntufs"), 0777)
+	fmt.Println("Created FS")
 	os.Chdir("./ubuntufs")
+	fmt.Println("Downloading ubuntu-fs")
 	fileUrl := "https://partner-images.canonical.com/core/trusty/current/ubuntu-trusty-core-cloudimg-amd64-root.tar.gz"
 
 	err := DownloadFile("ubuntu.tar.gz", fileUrl)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Finished downloading")
 	// Extracts the archive in the newly created folder
 	cmd := exec.Command("tar", "-xvzf", "ubuntu.tar.gz")
+	fmt.Println("Finished Extracting")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	must(cmd.Run())
+	fmt.Println("Your container is ready for use")
 
 }
 
