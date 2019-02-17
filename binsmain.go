@@ -37,7 +37,7 @@ func main() {
 
 }
 
-type weatherData struct {
+type containerData struct {
 	ContainerName string `json: msgationName`
 }
 
@@ -64,15 +64,15 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 
 	s := string(x)
 
-	weather := weatherData{
+	container := containerData{
 		ContainerName: s,
 	}
-	weatherJson, err := json.Marshal(weather)
+	containerJson, err := json.Marshal(container)
 	if err != nil {
 		fmt.Fprintf(w, "Error: %s", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(weatherJson)
+	w.Write(containerJson)
 
 }
 func server() {
