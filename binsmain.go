@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +14,9 @@ import (
 	"syscall"
 )
 
+var nameFlg string
+var myValue string
+
 // kofi run command arguments
 // go run binsmain.go run command arguments
 func main() {
@@ -23,6 +27,10 @@ func main() {
 	case "child":
 		child()
 	case "init":
+		nameFlg := flag.NewFlagSet("", flag.ExitOnError)
+		nameFlg.StringVar(&myValue, "name", "", "container name")
+		nameFlg.Parse(os.Args[2:])
+		fmt.Println("name:", myValue)
 		dlandunpack()
 
 	}
@@ -49,8 +57,15 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received: %v\n", msgation)
 
+	x, err := ioutil.ReadFile("/tmp/dat1")
+	if err != nil {
+		panic(err)
+	}
+
+	s := string(x)
+
 	weather := weatherData{
-		ContainerName: "kofi1",
+		ContainerName: s,
 	}
 	weatherJson, err := json.Marshal(weather)
 	if err != nil {
@@ -84,10 +99,21 @@ func child() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	//INSERT READFILE
+
+	r, err := ioutil.ReadFile("/tmp/dat1")
+	if err != nil {
+		panic(err)
+	}
+
+	s := r
+	var a []byte
+	copy(a[:], s)
+
 	must(syscall.Chroot("ubuntufs"))
 	must(os.Chdir("/"))
 	must(syscall.Mount("proc", "proc", "proc", 0, ""))
-	syscall.Sethostname([]byte("container"))
+	syscall.Sethostname(r)
 	must(cmd.Run())
 
 	must(syscall.Unmount("proc", 0)) // Unmounting proc is a must, otherwise after exiting from the container, the host
@@ -104,6 +130,12 @@ func must(err error) {
 // dlunpack creates a folder and downloads an archive in the directory that "kofi init" has been run
 
 func dlandunpack() {
+
+	w := []byte(myValue)
+	z := ioutil.WriteFile("/tmp/dat1", w, 0644)
+	if z != nil {
+		panic(z)
+	}
 
 	os.Mkdir(filepath.Join("ubuntufs"), 0777)
 	fmt.Println("Created FS")
