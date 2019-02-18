@@ -17,6 +17,16 @@ import (
 var nameFlg string
 var myValue string
 
+type containerData struct {
+	ContainerName string `json: msgationName`
+	ContainerPS   string `json: proces`
+}
+
+type msg struct {
+	msgone string `json: msgone`
+	msgtwo string `json: msgtwo`
+}
+
 // kofi run command arguments
 // go run binsmain.go run command arguments
 func main() {
@@ -27,23 +37,17 @@ func main() {
 	case "child":
 		child()
 	case "init":
-		nameFlg := flag.NewFlagSet("", flag.ExitOnError)
-		nameFlg.StringVar(&myValue, "name", "", "container name")
-		nameFlg.Parse(os.Args[2:])
-		fmt.Println("name:", myValue)
+		flags()
 		dlandunpack()
-
 	}
 
 }
 
-type containerData struct {
-	ContainerName string `json: msgationName`
-}
-
-type msg struct {
-	msgone string `json: msgone`
-	msgtwo string `json: msgtwo`
+func flags() {
+	nameFlg := flag.NewFlagSet("", flag.ExitOnError)
+	nameFlg.StringVar(&myValue, "name", "container", "container name")
+	nameFlg.Parse(os.Args[2:])
+	fmt.Println("name:", myValue)
 }
 
 func containerHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,18 +58,16 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal("Error reading", err)
 	}
 	err = json.Unmarshal(jsn, &msgation)
-
 	log.Printf("Received: %v\n", msgation)
-
 	x, err := ioutil.ReadFile("/tmp/dat1")
 	if err != nil {
 		panic(err)
 	}
-
+	// var p string
 	s := string(x)
-
 	container := containerData{
 		ContainerName: s,
+		ContainerPS:   "HAI",
 	}
 	containerJson, err := json.Marshal(container)
 	if err != nil {
@@ -99,8 +101,6 @@ func child() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	//INSERT READFILE
-
 	r, err := ioutil.ReadFile("/tmp/dat1")
 	if err != nil {
 		panic(err)
@@ -115,7 +115,6 @@ func child() {
 	must(syscall.Mount("proc", "proc", "proc", 0, ""))
 	syscall.Sethostname(r)
 	must(cmd.Run())
-
 	must(syscall.Unmount("proc", 0)) // Unmounting proc is a must, otherwise after exiting from the container, the host
 	// os will still use the newly created namespaces and will be unusable
 }
@@ -136,13 +135,11 @@ func dlandunpack() {
 	if z != nil {
 		panic(z)
 	}
-
 	os.Mkdir(filepath.Join("ubuntufs"), 0777)
 	fmt.Println("Created FS")
 	os.Chdir("./ubuntufs")
 	fmt.Println("Downloading ubuntu-fs")
 	fileUrl := "https://partner-images.canonical.com/core/trusty/current/ubuntu-trusty-core-cloudimg-amd64-root.tar.gz"
-
 	err := DownloadFile("ubuntu.tar.gz", fileUrl)
 	if err != nil {
 		panic(err)
@@ -160,26 +157,19 @@ func dlandunpack() {
 }
 
 func DownloadFile(filepath string, url string) error {
-
-	// Create the archive file
 	out, err := os.Create(filepath)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-
-	// Download
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
